@@ -1,0 +1,35 @@
+version: '3.4'
+
+volumes:
+  data:
+
+services:
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - 6379:6379
+ 
+  mnist-observability:
+    container_name: web
+    image: mnist-observability
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    user: appuser
+    volumes:
+      - data:/app
+    ports:
+      - 8000:8000
+    depends_on:
+      - redis
+      
+  worker:
+    container_name: worker
+    image: worker
+    build: .
+    command: celery -A app worker --loglevel=INFO &
+    volumes:
+      - data:/app
+    depends_on:
+      - redis
