@@ -1,12 +1,14 @@
 amqp==5.2.0
 annotated-types==0.6.0
 anyio==4.3.0
+async-timeout==4.0.3
 billiard==4.2.0
 celery==5.3.6
 click==8.1.7
 click-didyoumean==0.3.0
 click-plugins==1.1.1
 click-repl==0.3.0
+dnspython==2.6.1
 exceptiongroup==1.2.0
 fastapi==0.109.2
 filelock==3.13.1
@@ -35,8 +37,10 @@ pillow==10.2.0
 prompt-toolkit==3.0.43
 pydantic==2.6.2
 pydantic_core==2.16.3
+pymongo==4.6.2
 python-dateutil==2.8.2
 python-dotenv==1.0.1
+redis==5.0.1
 six==1.16.0
 sniffio==1.3.0
 starlette==0.36.3

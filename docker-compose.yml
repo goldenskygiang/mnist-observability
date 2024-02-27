@@ -4,6 +4,12 @@ volumes:
   data:
 
 services:
+  mongodb:
+    container_name: mongodb
+    image: mongo:latest
+    ports:
+      - 27021:27021
+
   redis:
     container_name: redis
     image: redis:latest
@@ -23,6 +29,7 @@ services:
       - 8000:8000
     depends_on:
       - redis
+      - mongodb
       
   worker:
     container_name: worker
@@ -33,3 +40,4 @@ services:
       - data:/app
     depends_on:
       - redis
+      - mongodb
