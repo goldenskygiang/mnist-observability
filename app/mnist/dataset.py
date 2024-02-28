@@ -15,10 +15,11 @@ MNIST_TEST_DATASET = None
 __downloaded__ = False
 
 def init_dataset(dir: str, transform=MNIST_NORMALIZE_TF):
+    global MNIST_TRAIN_DATASET, MNIST_TEST_DATASET, __downloaded__
+    
     if __downloaded__:
         log(INFO, "Dataset already downloaded")
 
-    global MNIST_TRAIN_DATASET, MNIST_TEST_DATASET
     MNIST_TRAIN_DATASET = datasets.MNIST(root=dir, download=True, train=True, transform=transform)
     MNIST_TEST_DATASET = datasets.MNIST(root=dir, download=True, train=False, transform=transform)
     __downloaded__ = True

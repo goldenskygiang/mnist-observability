@@ -1,5 +1,9 @@
 docker-compose.debug.yml
 .vscode/*
+data/
+checkpoints/
+logs/
+*draft.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

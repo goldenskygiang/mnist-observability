@@ -1,8 +1,7 @@
-from app.models import AbstractBaseModel
 from app.models.enums import *
 from typing import List
 
-class Hyperparam(AbstractBaseModel):
+class Hyperparam:
     epochs: int
     learning_rate: List[float]
     dropout: List[float]

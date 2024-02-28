@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from app.api.router import api_router
 from app.celery import celeryapp
 import app.config as config
-from mnist.dataset import init_dataset
+from app.mnist.dataset import init_dataset
 
 def get_app() -> FastAPI:
     app = FastAPI()
