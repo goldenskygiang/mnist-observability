@@ -1,9 +1,12 @@
 from app.models import AbstractBaseModel
+from app.models.enums import *
+from typing import List
 
 class Hyperparam(AbstractBaseModel):
-    epoches: int
-    learning_rate: float
-    dropout: float
-    batch_size: int
-    optimizer: str
-    loss_func: str
+    epochs: int
+    learning_rate: List[float]
+    dropout: List[float]
+    batch_size: List[int]
+    optimizer: Optimizer
+    output_activation_func: ActivationFunction
+    loss_func: LossFunction

@@ -1,18 +1,12 @@
 from datetime import datetime
-from typing import Optional, List
-from typing_extensions import Annotated
-
-from pydantic import ConfigDict, BaseModel, Field
-from pydantic.functional_validators import BeforeValidator
-
+from pydantic import BaseModel, Field
 from bson import ObjectId
-import motor.motor_asyncio
-
-PyObjectId = Annotated[str, BeforeValidator(str)]
 
 class AbstractBaseModel(BaseModel):
-    id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    created_at: datetime = datetime.now()
+    id: ObjectId = Field(default_factory=ObjectId, alias="_id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        pass
+    def __setattr__(self, name, value):
+        super().__setattr__('updated_at', datetime.utcnow())
+        super().__setattr__(name, value)

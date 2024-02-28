@@ -7,3 +7,6 @@ def start_experiment():
 @celeryapp.task
 def stop_experiment():
     pass
+
+def get_job_status():
+    pass
