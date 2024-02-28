@@ -10,7 +10,6 @@ class Experiment(AbstractBaseModel):
     celery_task_id: Optional[str]
     use_gpu: bool
     status: str
-    train_ratio: float = 0.7
     deleted: bool = False
     log_dir: str
     checkpoint_dir: str

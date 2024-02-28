@@ -12,3 +12,4 @@ class ActivationFunction(str, Enum):
 class LossFunction(str, Enum):
     MSE = "MSE"
     MAE = "MAE"
+    CrossEntropy = "CrossEntropy"
