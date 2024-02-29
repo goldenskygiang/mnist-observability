@@ -1,9 +1,10 @@
+from app.models.enums import ExperimentStatus
 from app.models.hyperparam import Hyperparam
 from app.models.metrics import Metrics
+
 from datetime import datetime
-from typing import Annotated, Optional
+from typing import Annotated, Optional, List
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
-from typing import List, Optional
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
@@ -13,16 +14,16 @@ class Experiment(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     name: str
-    seed: Optional[int]
-    celery_task_id: Optional[str]
-    use_gpu: bool
-    status: str
+    seed: Optional[int] = None
+    celery_task_id: Optional[str] = None
+    use_gpu: bool = False
+    status: ExperimentStatus = ExperimentStatus.CREATED
     deleted: bool = False
-    log_dir: str
-    checkpoint_dir: str
+    log_dir: Optional[str] = None
+    checkpoint_dir: Optional[str] = None
     hyperparam: Hyperparam
-    last_result: Metrics
-    result_per_epoch: List[Metrics]
+    last_result: Optional[Metrics]
+    result_per_epoch: Optional[List[Metrics]]
 
     model_config = ConfigDict(
         populate_by_name=True,
