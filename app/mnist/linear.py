@@ -8,16 +8,16 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from app.models.enums import ActivationFunction, LossFunction, Optimizer
-from app.models.experiment import Experiment, Hyperparam
+from app.models.experiment import ExperimentModel, Hyperparam
 
 from app.mnist.dataset import get_data_loader, init_dataset
 from app.models.metrics import Metrics
 
 NUM_CLASSES = 10
 
-class LinearModel(nn.Module):
+class MNISTLinearModel(nn.Module):
     def __init__(self, activ_func: ActivationFunction):
-        super(LinearModel, self).__init__()
+        super(MNISTLinearModel, self).__init__()
         self.linear = nn.Linear(28 * 28, 512)
         self.sigmoid = nn.Sigmoid()
         self.fc = nn.Linear(512, NUM_CLASSES)
@@ -39,11 +39,11 @@ class LinearModel(nn.Module):
             return self.tanh(x)
     
 def init_linear_model(activ_func: ActivationFunction):
-    model = LinearModel(activ_func)
+    model = MNISTLinearModel(activ_func)
     return model
 
 def run_model_with_dataloader(
-        model: LinearModel,
+        model: MNISTLinearModel,
         optimizer: optim.Optimizer,
         criterion: nn.Module,
         args: Hyperparam,
@@ -110,7 +110,7 @@ def run_model_with_dataloader(
 
     return model, results
 
-def train(model: LinearModel, experiment: Experiment):
+def train(model: MNISTLinearModel, experiment: ExperimentModel):
     args = experiment.hyperparam
 
     if experiment.seed:
@@ -156,7 +156,7 @@ def train(model: LinearModel, experiment: Experiment):
 
     return model, results
 
-def test(model: LinearModel, experiment: Experiment):
+def test(model: MNISTLinearModel, experiment: ExperimentModel):
     args = experiment.hyperparam
 
     if experiment.seed:
