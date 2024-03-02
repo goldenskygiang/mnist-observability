@@ -101,16 +101,25 @@ def run_model_with_dataloader(
     # Average metrics
     mean_loss /= len(dataloader)
     accuracy = correct / total
-    avg_precision = torch.nanmean(precision).cpu().float()
-    avg_recall = torch.nanmean(recall).cpu().float()
-    avg_f1_score = torch.nanmean(f1_score).cpu().float()
+    avg_precision = torch.nanmean(precision).cpu().numpy()
+    avg_recall = torch.nanmean(recall).cpu().numpy()
+    avg_f1_score = torch.nanmean(f1_score).cpu().numpy()
     runtime = end_time - start_time
 
-    results = Metrics(mean_loss, accuracy, avg_precision, avg_recall, avg_f1_score, runtime)
+    results = {
+        'loss': mean_loss,
+        'accuracy': accuracy,
+        'precision': avg_precision,
+        'recall': avg_recall,
+        'f1_score': avg_f1_score,
+        'runtime': runtime
+    }
+
+    results = Metrics.model_validate(results)
 
     return model, results
 
-def train(model: MNISTLinearModel, experiment: ExperimentModel):
+def train_model(model: MNISTLinearModel, experiment: ExperimentModel):
     args = experiment.hyperparam
 
     if experiment.seed:
@@ -128,16 +137,17 @@ def train(model: MNISTLinearModel, experiment: ExperimentModel):
 
     train_dataloader = get_data_loader(
         train=True,
-        batch_size=args.batch_size,
+        batch_size=args.batch_size[0],
         shuffle=experiment.seed is None)
     
+    # TOOD: grid search hyperparams
     optimizer = None
     if args.optimizer == Optimizer.Adam:
-        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate[0])
     elif args.optimizer == Optimizer.RMSprop:
-        optimizer = optim.RMSprop(model.parameters(), lr=args.learning_rate)
+        optimizer = optim.RMSprop(model.parameters(), lr=args.learning_rate[0])
     else:
-        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
+        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate[0])
 
     criterion = None
     if args.loss_func == LossFunction.MAE:
@@ -150,13 +160,14 @@ def train(model: MNISTLinearModel, experiment: ExperimentModel):
     results = []
 
     for ep in range(args.epochs):
-        model, metrics = run_model_with_dataloader(model, optimizer, criterion, args, train_dataloader, device)
+        model, metrics = run_model_with_dataloader(
+            model, optimizer, criterion, args, train_dataloader, device)
         results.append(metrics)
         log(INFO, f'Epoch {ep + 1}/{args.epochs}: loss={metrics.loss:.5f}, acc={metrics.accuracy:.5f}, pre={metrics.precision:.5f}, rec={metrics.recall:.5f}, f1={metrics.f1_score:.5f}')
 
     return model, results
 
-def test(model: MNISTLinearModel, experiment: ExperimentModel):
+def test_model(model: MNISTLinearModel, experiment: ExperimentModel):
     args = experiment.hyperparam
 
     if experiment.seed:
@@ -174,16 +185,16 @@ def test(model: MNISTLinearModel, experiment: ExperimentModel):
 
     test_dataloader = get_data_loader(
         train=False,
-        batch_size=args.batch_size,
+        batch_size=args.batch_size[0],
         shuffle=experiment.seed is None)
     
     optimizer = None
     if args.optimizer == Optimizer.Adam:
-        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate[0])
     elif args.optimizer == Optimizer.RMSprop:
-        optimizer = optim.RMSprop(model.parameters(), lr=args.learning_rate)
+        optimizer = optim.RMSprop(model.parameters(), lr=args.learning_rate[0])
     else:
-        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
+        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate[0])
 
     criterion = None
     if args.loss_func == LossFunction.MAE:
@@ -193,5 +204,6 @@ def test(model: MNISTLinearModel, experiment: ExperimentModel):
     else:
         criterion = nn.CrossEntropyLoss()
 
-    model, metrics = run_model_with_dataloader(model, optimizer, criterion, args, test_dataloader, device)
+    model, metrics = run_model_with_dataloader(
+        model, optimizer, criterion, args, test_dataloader, device)
     return model, metrics

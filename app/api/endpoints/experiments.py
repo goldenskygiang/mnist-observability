@@ -1,17 +1,16 @@
 from bson import ObjectId
+from pymongo import ReturnDocument
 from app import config
 from app.celery import celeryapp
-from app.models.experiment import ExperimentModel, ExperimentCollection
+from app.services.taskman import tasks as taskman
+from app.models import experiment_collection
+from app.models.experiment import ExperimentDto, ExperimentModel, ExperimentCollection
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Response, WebSocket, status
 from celery.result import AsyncResult
 import motor.motor_asyncio
 
 router = APIRouter()
-
-client = motor.motor_asyncio.AsyncIOMotorClient(config.MONGODB_URL)
-db = client.get_database('mnist-observability')
-experiment_collection = db.get_collection('experiments')
 
 @router.get(
     '/',
@@ -20,7 +19,7 @@ experiment_collection = db.get_collection('experiments')
     response_model_by_alias=False
 )
 async def get_all_experiments():
-    return ExperimentCollection(experiments=await experiment_collection.find().to_list())
+    return ExperimentCollection(experiments=await experiment_collection.find().to_list(1000))
 
 @router.get(
     '/{id}',
@@ -45,16 +44,34 @@ async def get_experiment_with_id(id: str):
     status_code=status.HTTP_201_CREATED,
     response_model_by_alias=False
 )
-def create_new_experiment():
-    pass
+async def create_new_experiment(exp: ExperimentDto = Body()):
+    new_exp = await experiment_collection.insert_one(
+        exp.model_dump(by_alias=True)
+    )
 
-@router.post('/{id}/clone')
-def clone_experiment(id: str):
-    pass
+    created_exp = await experiment_collection.find_one(
+        { "_id": new_exp.inserted_id }
+    )
 
-@router.delete('/{id}')
-def delete_experiment(id: str):
-    pass
+    taskman.start_experiment.delay(str(new_exp.inserted_id))
+    
+    return created_exp
+
+@router.delete(
+    '/{id}',
+    response_description="Delete an experiment"
+)
+async def delete_experiment(id: str):
+    delete_result = await experiment_collection.delete_one(
+        { "_id": ObjectId(id) }
+    )
+
+    if delete_result.deleted_count == 1:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Experiment {id} not found")
 
 @router.websocket('/logs/{task_id}')
 async def stream_logs(task_id: str, websocket: WebSocket):
