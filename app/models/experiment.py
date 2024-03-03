@@ -26,6 +26,8 @@ class ExperimentModel(ExperimentDto):
     test_result: Optional[Dict[str, Metrics]] = None
     train_results: Optional[Dict[str, List[Metrics]]] = None
 
+    elapsed_time: float = 0
+
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True

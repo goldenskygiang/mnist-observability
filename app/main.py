@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 from fastapi import FastAPI
 
@@ -8,6 +9,7 @@ from app.mnist.dataset import init_dataset
 
 def get_app() -> FastAPI:
     app = FastAPI()
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
     app.include_router(api_router)
     return app
 

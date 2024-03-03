@@ -1,5 +1,7 @@
+from datetime import datetime
 import logging
 import os
+import time
 from app import config
 from app.mnist.linear import init_linear_model, test_model, train_model
 from app.models.enums import ExperimentStatus
@@ -26,6 +28,8 @@ def start_experiment(self, exp_id: str):
     logger = logging.getLogger(exp_id)
     logger.setLevel(logging.INFO)
     logger.addHandler(logging.FileHandler(log_path))
+
+    start_time = time.time()
 
     try:
         exp = loop.run_until_complete(experiment_collection.find_one_and_update(
@@ -90,6 +94,19 @@ def start_experiment(self, exp_id: str):
                     "celery_task_id": task_id,
                     "status": ExperimentStatus.ERROR,
                     "log_dir": log_path
+                }
+            },
+            return_document=ReturnDocument.AFTER
+        ))
+        
+    finally:
+        loop.run_until_complete(experiment_collection.find_one_and_update(
+            { "_id": exp_obj_id },
+            {
+                "$set":
+                {
+                    "updated_at": datetime.utcnow(),
+                    "elapsed_time": time.time() - start_time
                 }
             },
             return_document=ReturnDocument.AFTER

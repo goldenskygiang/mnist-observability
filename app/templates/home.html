@@ -1,0 +1,105 @@
+{% extends "shared/base.html" %}
+
+{% block title %}
+<title>MNIST Observability</title>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>View experiments</h1>
+    <br />
+    <table class="table" id="resultTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Runtime</th>
+                <th>Accuracy</th>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>Best F1-Score</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="static/css/dataTables.bootstrap5.min.css">
+<script src="static/js/jquery.dataTables.min.js"></script>
+<script src="static/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    $.ajax({
+        url: '/api/experiments',
+        type: 'GET',
+        dataType: 'json',
+        success: function(data) {
+            displayData(data.experiments);
+        },
+        error: function(error) {
+            console.error('Error fetching data: ', error);
+            $('#resultTable').DataTable();
+        }
+    });
+
+    function displayData(exp_results) {        
+        let display_data = exp_results.map(r => {
+            let id = r.id;
+            let name = r.name;
+            let status = r.status;
+            let runtime = r.elapsed_time;
+    
+            let acc = 0, pre = 0, rec = 0, best_f1 = 0;
+            for (const key in r.test_result) {
+                if (r.test_result[key].f1_score > best_f1) {
+                    best_f1 = r.test_result[key].f1_score;
+                    acc = r.test_result[key].accuracy;
+                    pre = r.test_result[key].precision;
+                    rec = r.test_result[key].recall;
+                }
+            }
+    
+            let cell = [];
+            let idLink = document.createElement('a');
+            idLink.innerText = name;
+            idLink.href = '/details/' + id;
+            cell.push(idLink.outerHTML);
+
+            // status, runtime, accuracy
+            let statusBlock = document.createElement('span');
+            statusBlock.innerText = status;
+            switch (status) {
+                case 'running':
+                    statusBlock.className = 'badge text-bg-primary';
+                    break;
+                case 'success':
+                    statusBlock.className = 'badge text-bg-success';
+                    break;
+                case 'error':
+                    statusBlock.className = 'badge text-bg-danger';
+                    break;
+                case 'cancelled':
+                    statusBlock.className = 'badge text-bg-warning';
+                    break;
+                default:
+                    statusBlock.className = 'badge text-bg-secondary';
+                    break;
+            }
+            cell.push(statusBlock.outerHTML);
+
+            let fixedPrecision = 4;
+
+            cell.push(`${runtime.toFixed(fixedPrecision)} s`)
+            cell.push(`${(acc * 100).toFixed(fixedPrecision)}%`)
+    
+            for (let el of [pre, rec, best_f1]) cell.push(el.toFixed(fixedPrecision));
+    
+            return cell;
+        });
+
+        $('#resultTable').DataTable({ data: display_data });
+    }
+</script>
+{% endblock %}
