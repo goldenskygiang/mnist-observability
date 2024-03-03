@@ -1,14 +1,15 @@
+import asyncio
 from bson import ObjectId
 from pymongo import ReturnDocument
 from app import config
 from app.celery import celeryapp
+from app.models.enums import ExperimentStatus
 from app.services.taskman import tasks as taskman
 from app.models import experiment_collection
 from app.models.experiment import ExperimentDto, ExperimentModel, ExperimentCollection
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Response, WebSocket, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Response, WebSocket, WebSocketException, status
 from celery.result import AsyncResult
-import motor.motor_asyncio
 
 router = APIRouter()
 
@@ -73,6 +74,40 @@ async def delete_experiment(id: str):
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f"Experiment {id} not found")
 
-@router.websocket('/logs/{task_id}')
-async def stream_logs(task_id: str, websocket: WebSocket):
+@router.websocket('/ws/logs')
+async def stream_logs(websocket: WebSocket):
     await websocket.accept()
+
+    id = await websocket.receive_text()
+
+    experiment = await experiment_collection.find_one(
+        { "_id": ObjectId(id) }
+    )
+
+    if experiment is None:
+        raise WebSocketException(
+            code=status.WS_1013_TRY_AGAIN_LATER,
+            reason=f"Experiment id {id} not found")
+    
+    experiment = ExperimentModel.model_validate(experiment)
+
+    if experiment.log_dir is not None:
+        with open(experiment.log_dir, 'r') as f:
+            await websocket.send_text(f.read())
+            while True:
+                content = f.read()
+                if content:
+                    await websocket.send_text(content)
+                    experiment = ExperimentModel.model_validate(
+                        await experiment_collection.find_one(
+                            { "_id": ObjectId(id) }
+                        )
+                    )
+                else:
+                    await asyncio.sleep(5)
+
+                if experiment.status == ExperimentStatus.SUCCESS or \
+                experiment.status == ExperimentStatus.ERROR:
+                    break
+
+    await websocket.close()

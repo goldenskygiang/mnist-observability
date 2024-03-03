@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from app.models.enums import ActivationFunction, LossFunction, Optimizer
+from app.models.enums import ActivationFunction, Optimizer
 from app.models.experiment import ExperimentModel, Hyperparam
 
 from app.mnist.dataset import get_data_loader, init_dataset
@@ -46,7 +46,6 @@ def run_model_with_dataloader(
         model: MNISTLinearModel,
         optimizer: optim.Optimizer,
         criterion: nn.Module,
-        args: Hyperparam,
         dataloader: DataLoader,
         device: torch.device):
     mean_loss = 0.0
@@ -68,13 +67,8 @@ def run_model_with_dataloader(
         outputs = model(inputs)
 
         _, predicted = torch.max(outputs.data, 1)
-
-        if args.loss_func == LossFunction.CrossEntropy:
-            truths = labels
-        else:
-            truths = F.one_hot(labels, num_classes=NUM_CLASSES).float()
         
-        loss = criterion(outputs, truths)
+        loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
         mean_loss += loss.item()
@@ -119,7 +113,12 @@ def run_model_with_dataloader(
 
     return model, results
 
-def train_model(model: MNISTLinearModel, experiment: ExperimentModel):
+def train_model(
+        model: MNISTLinearModel,
+        experiment: ExperimentModel,
+        lr: float,
+        batch_sz: int,
+        logger: Logger):
     args = experiment.hyperparam
 
     if experiment.seed:
@@ -129,45 +128,44 @@ def train_model(model: MNISTLinearModel, experiment: ExperimentModel):
     if experiment.use_gpu and torch.cuda.is_available():
         device = torch.device('cuda')
 
-    log(INFO, "Start TRAINING phase")
-    log(INFO, f"Using device: {device}")
+    logger.info("Start TRAINING phase")
+    logger.info(f"Using device: {device}")
 
     model.to(device)
     model.train()
 
     train_dataloader = get_data_loader(
         train=True,
-        batch_size=args.batch_size[0],
+        batch_size=batch_sz,
         shuffle=experiment.seed is None)
     
     # TOOD: grid search hyperparams
     optimizer = None
     if args.optimizer == Optimizer.Adam:
-        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate[0])
+        optimizer = optim.Adam(model.parameters(), lr=lr)
     elif args.optimizer == Optimizer.RMSprop:
-        optimizer = optim.RMSprop(model.parameters(), lr=args.learning_rate[0])
+        optimizer = optim.RMSprop(model.parameters(), lr=lr)
     else:
-        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate[0])
+        optimizer = optim.SGD(model.parameters(), lr=lr)
 
-    criterion = None
-    if args.loss_func == LossFunction.MAE:
-        criterion = nn.L1Loss()
-    elif args.loss_func == LossFunction.MSE:
-        criterion = nn.MSELoss()
-    else:
-        criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()
 
     results = []
 
     for ep in range(args.epochs):
         model, metrics = run_model_with_dataloader(
-            model, optimizer, criterion, args, train_dataloader, device)
+            model, optimizer, criterion, train_dataloader, device)
         results.append(metrics)
-        log(INFO, f'Epoch {ep + 1}/{args.epochs}: loss={metrics.loss:.5f}, acc={metrics.accuracy:.5f}, pre={metrics.precision:.5f}, rec={metrics.recall:.5f}, f1={metrics.f1_score:.5f}')
+        logger.info(f'Epoch {ep + 1}/{args.epochs}: loss={metrics.loss:.5f}, acc={metrics.accuracy:.5f}, pre={metrics.precision:.5f}, rec={metrics.recall:.5f}, f1={metrics.f1_score:.5f}')
 
     return model, results
 
-def test_model(model: MNISTLinearModel, experiment: ExperimentModel):
+def test_model(
+        model: MNISTLinearModel,
+        experiment: ExperimentModel,
+        lr: float,
+        batch_sz: int,
+        logger: Logger):
     args = experiment.hyperparam
 
     if experiment.seed:
@@ -177,33 +175,30 @@ def test_model(model: MNISTLinearModel, experiment: ExperimentModel):
     if experiment.use_gpu and torch.cuda.is_available():
         device = torch.device('cuda')
 
-    log(INFO, "Start TESTING phase")
-    log(INFO, f"Using device: {device}")
+    logger.info("Start TESTING phase")
+    logger.info(f"Using device: {device}")
 
     model.to(device)
     model.eval()
 
     test_dataloader = get_data_loader(
         train=False,
-        batch_size=args.batch_size[0],
+        batch_size=batch_sz,
         shuffle=experiment.seed is None)
     
     optimizer = None
     if args.optimizer == Optimizer.Adam:
-        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate[0])
+        optimizer = optim.Adam(model.parameters(), lr=lr)
     elif args.optimizer == Optimizer.RMSprop:
-        optimizer = optim.RMSprop(model.parameters(), lr=args.learning_rate[0])
+        optimizer = optim.RMSprop(model.parameters(), lr=lr)
     else:
-        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate[0])
+        optimizer = optim.SGD(model.parameters(), lr=lr)
 
-    criterion = None
-    if args.loss_func == LossFunction.MAE:
-        criterion = nn.L1Loss()
-    elif args.loss_func == LossFunction.MSE:
-        criterion = nn.MSELoss()
-    else:
-        criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()
 
     model, metrics = run_model_with_dataloader(
-        model, optimizer, criterion, args, test_dataloader, device)
+        model, optimizer, criterion, test_dataloader, device)
+    
+    logger.info(f'Test result: loss={metrics.loss:.5f}, acc={metrics.accuracy:.5f}, pre={metrics.precision:.5f}, rec={metrics.recall:.5f}, f1={metrics.f1_score:.5f}')
+
     return model, metrics

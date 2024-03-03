@@ -3,7 +3,7 @@ from app.models.hyperparam import Hyperparam
 from app.models.metrics import Metrics
 
 from datetime import datetime
-from typing import Annotated, Optional, List
+from typing import Annotated, Dict, Optional, List
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
@@ -23,8 +23,8 @@ class ExperimentModel(ExperimentDto):
     status: ExperimentStatus = ExperimentStatus.CREATED
     log_dir: Optional[str] = None
     checkpoint_dir: Optional[str] = None
-    test_result: Optional[Metrics] = None
-    train_results: Optional[List[Metrics]] = None
+    test_result: Optional[Dict[str, Metrics]] = None
+    train_results: Optional[Dict[str, List[Metrics]]] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -32,27 +32,8 @@ class ExperimentModel(ExperimentDto):
     )
 
     def __setattr__(self, name, value):
-        super().__setattr__('updated_at', datetime.utcnow())
         super().__setattr__(name, value)
+        super().__setattr__('updated_at', datetime.utcnow())
 
 class ExperimentCollection(BaseModel):
     experiments: List[ExperimentModel]
-
-"""
-        json_schema_extra={
-            "example": {
-                "name": "MNIST 1",
-                "use_gpu": False,
-                "status": "created",
-                "hyperparam": {
-                    "epoches": 5,
-                    "learning_rate": [0.01],
-                    "dropout": [],
-                    "batch_size": [128],
-                    "optimizer": "SGD",
-                    "output_activation_func": "softmax",
-                    "loss_func": "CrossEntropy"
-                }
-            }
-        }
-"""

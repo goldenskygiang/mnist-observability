@@ -1,3 +1,6 @@
+import logging
+import os
+from app import config
 from app.mnist.linear import init_linear_model, test_model, train_model
 from app.models.enums import ExperimentStatus
 from app.models import experiment_collection
@@ -14,46 +17,80 @@ def start_experiment(self, exp_id: str):
     loop = asyncio.get_event_loop()
 
     task_id = self.request.id
-    exp_id = ObjectId(exp_id)
+    exp_obj_id = ObjectId(exp_id)
 
-    exp = loop.run_until_complete(experiment_collection.find_one_and_update(
-        { "_id": exp_id },
-        { "$set": { "celery_task_id": task_id } },
-        return_document=ReturnDocument.AFTER
-    ))
+    log_path = os.path.abspath(os.path.join(config.LOG_DIR, f'{exp_id}.txt'))
+    with open(log_path, 'w') as f:
+        pass
 
-    exp = ExperimentModel.model_validate(exp)
-    args = exp.hyperparam
+    logger = logging.getLogger(exp_id)
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.FileHandler(log_path))
 
-    model = init_linear_model(args.output_activation_func)
-    model, train_metrics_per_epoch = train_model(model, exp)
-    model, test_metrics = test_model(model, exp)
+    try:
+        exp = loop.run_until_complete(experiment_collection.find_one_and_update(
+            { "_id": exp_obj_id },
+            {
+                "$set":
+                {
+                    "celery_task_id": task_id,
+                    "status": ExperimentStatus.RUNNING,
+                    "log_dir": log_path
+                }
+            },
+            return_document=ReturnDocument.AFTER
+        ))
 
-    test_metrics = {
-        k: v for k, v in test_metrics.model_dump(by_alias=True).items()
-    }
+        exp = ExperimentModel.model_validate(exp)
+        args = exp.hyperparam
 
-    train_metrics_per_epoch = [
-        {
-            k: v for k, v in ep.model_dump(by_alias=True).items()
-        } for ep in train_metrics_per_epoch
-    ]
+        train_results = {}
+        test_results = {}
 
-    upd = {
-        "train_results": train_metrics_per_epoch,
-        "test_result": test_metrics,
-        "status": ExperimentStatus.SUCCESS
-    }
+        for lr in args.learning_rate:
+            for batch_sz in args.batch_size:
+                key = f"lr={lr},batch_size={batch_sz}"
 
-    loop.run_until_complete(experiment_collection.find_one_and_update(
-        { "_id": exp_id },
-        { "$set": upd },
-        return_document=ReturnDocument.AFTER
-    ))
+                logger.info(f'Configuration: {key}')
 
-@celeryapp.task
-def stop_experiment():
-    pass
+                model = init_linear_model(args.output_activation_func)
+                model, train_metrics_per_epoch = train_model(model, exp, lr, batch_sz, logger)
+                model, test_metrics = test_model(model, exp, lr, batch_sz, logger)
 
-def get_job_status():
-    pass
+                train_results[key] = [
+                    {
+                        k: v for k, v in ep.model_dump(by_alias=True).items()
+                    } for ep in train_metrics_per_epoch
+                ]
+
+                test_results[key] = {
+                    k: v for k, v in test_metrics.model_dump(by_alias=True).items()
+                }
+
+        upd = {
+            "train_results": train_results,
+            "test_result": test_results,
+            "status": ExperimentStatus.SUCCESS
+        }
+
+        loop.run_until_complete(experiment_collection.find_one_and_update(
+            { "_id": exp_obj_id },
+            { "$set": upd },
+            return_document=ReturnDocument.AFTER
+        ))
+
+    except Exception as e:
+        logger.exception(e)
+        
+        loop.run_until_complete(experiment_collection.find_one_and_update(
+            { "_id": exp_obj_id },
+            {
+                "$set":
+                {
+                    "celery_task_id": task_id,
+                    "status": ExperimentStatus.ERROR,
+                    "log_dir": log_path
+                }
+            },
+            return_document=ReturnDocument.AFTER
+        ))
