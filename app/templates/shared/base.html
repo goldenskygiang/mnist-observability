@@ -22,7 +22,11 @@
     <script src="/static/js/jquery-3.7.1.min.js"></script>
     <script src="/static/js/bootstrap.min.js"></script>
     <script>
-        var BASE_URL = "127.0.0.1:8000";
+        var BASE_URL = window.location.hostname;
+        
+        if (window.location.port !== null && window.location.port.trim() !== "") {
+            BASE_URL += `:${window.location.port}`;
+        }
     </script>
 
     {% block scripts %}

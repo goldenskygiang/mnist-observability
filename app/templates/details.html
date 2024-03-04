@@ -112,9 +112,7 @@
 
     socket.addEventListener('close', (event) => {
         console.log(status);
-        if (status !== 'success' &&
-            status !== 'error' &&
-            status !== 'cancelled') {
+        if (status === 'running') {
             document.location.reload();
         }
     });
