@@ -1,6 +1,7 @@
 import asyncio
 from bson import ObjectId
 from pymongo import ReturnDocument
+import pymongo
 from app import config
 from app.celery import celeryapp
 from app.models.enums import ExperimentStatus
@@ -20,7 +21,9 @@ router = APIRouter()
     response_model_by_alias=False
 )
 async def get_all_experiments():
-    return ExperimentCollection(experiments=await experiment_collection.find().to_list(1000))
+    return ExperimentCollection(
+        experiments=await experiment_collection.find().sort(
+            "updated_at", pymongo.DESCENDING).to_list(1000))
 
 @router.get(
     '/{id}',

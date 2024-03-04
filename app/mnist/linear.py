@@ -1,4 +1,5 @@
 from logging import *
+import logging
 import time
 
 import torch
@@ -117,8 +118,9 @@ def train_model(
         model: MNISTLinearModel,
         experiment: ExperimentModel,
         lr: float,
-        batch_sz: int,
-        logger: Logger):
+        batch_sz: int):
+    logger = logging.getLogger(str(experiment.id))
+
     args = experiment.hyperparam
 
     if experiment.seed:
@@ -164,8 +166,9 @@ def test_model(
         model: MNISTLinearModel,
         experiment: ExperimentModel,
         lr: float,
-        batch_sz: int,
-        logger: Logger):
+        batch_sz: int):
+    logger = logging.getLogger(str(experiment.id))
+
     args = experiment.hyperparam
 
     if experiment.seed:

@@ -27,9 +27,9 @@
 {% endblock %}
 
 {% block scripts %}
-<link rel="stylesheet" href="static/css/dataTables.bootstrap5.min.css">
-<script src="static/js/jquery.dataTables.min.js"></script>
-<script src="static/js/dataTables.bootstrap5.min.js"></script>
+<link rel="stylesheet" href="/static/css/datatables.min.css">
+<script src="/static/js/datatables.min.js"></script>
+<script src="/static/js/datatables.formatted-numbers.js"></script>
 <script>
     $.ajax({
         url: '/api/experiments',
@@ -99,7 +99,12 @@
             return cell;
         });
 
-        $('#resultTable').DataTable({ data: display_data });
+        $('#resultTable').DataTable({
+            data: display_data,
+            columnDefs: [
+                { type: "formatted-num", target: 2 }
+            ]
+        });
     }
 </script>
 {% endblock %}

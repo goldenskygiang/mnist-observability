@@ -1,0 +1,123 @@
+{% extends "shared/base.html" %}
+
+{% block title %}
+<title>Detail - MNIST Observability</title>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="/">Back to home</a>
+    <div class="row">
+        <h1>{{ name }} - experiment results <span id="exp-status-badge"></span></h1>
+    </div>
+    <div>
+        <b>Experiment ID:</b>
+        <p id="exp-id">{{ id }}</p>
+        <p id="exp-status" hidden>{{ status }}</p>
+    </div>
+    <hr />
+
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts-pane"
+                type="button" role="tab" aria-controls="charts-pane" aria-selected="true">Charts</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs-pane"
+                type="button" role="tab" aria-controls="logs-pane" aria-selected="false">Logs</button>
+        </li>
+    </ul>
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane" id="charts-pane" role="tabpanel" aria-labelledby="charts-tab"
+            tabindex="0">
+            <br />
+            <div id="metrics-viewer" class="accordion"></div>
+        </div>
+        <div class="tab-pane" id="logs-pane" role="tabpanel" aria-labelledby="logs-tab" tabindex="0">
+            <div id="log-viewer" style="height: 450px;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/ace.js" type="text/javascript" charset="utf-8"></script>
+<script>
+    var status = document.getElementById('exp-status').innerText;
+    var statusBlock = document.getElementById('exp-status-badge');
+    status = status.split('.')[1].toLowerCase();
+
+    statusBlock.innerText = status;
+    switch (status) {
+        case 'running':
+            statusBlock.className = 'badge text-bg-primary';
+            break;
+        case 'success':
+            statusBlock.className = 'badge text-bg-success';
+            break;
+        case 'error':
+            statusBlock.className = 'badge text-bg-danger';
+            break;
+        case 'cancelled':
+            statusBlock.className = 'badge text-bg-warning';
+            break;
+        default:
+            statusBlock.className = 'badge text-bg-secondary';
+            break;
+    }
+
+    var metricsViewer = document.getElementById('metrics-viewer');
+
+    if (status !== 'success' &&
+        status !== 'error' &&
+        status !== 'cancelled') {
+        metricsViewer.innerText = "Metrics are not available yet!";
+
+        let logsTab = document.getElementById('logs-tab');
+        logsTab.className += ' active';
+        let logsPane = document.getElementById('logs-pane');
+        logsPane.className += ' active';
+    } else {
+        let chartsTab = document.getElementById('charts-tab');
+        chartsTab.className += ' active';
+        let chartsPane = document.getElementById('charts-pane');
+        chartsPane.className += ' active';
+
+        // TODO: handle plotting here
+        metricsViewer.innerText = "Metrics are now available!";
+    }
+
+    var viewer = ace.edit('log-viewer');
+    viewer.setTheme("ace/theme/terminal");
+    viewer.session.setMode("ace/mode/plain_text");
+    viewer.setOptions({
+        fontSize: "12pt"
+    });
+    viewer.setReadOnly(true);
+
+    const socket = new WebSocket(`ws://${BASE_URL}/api/experiments/ws/logs`);
+
+    socket.addEventListener('open', (event) => {
+        console.log(event);
+        socket.send(document.getElementById('exp-id').innerText);
+    });
+
+    socket.addEventListener('message', (event) => {
+        console.log(event);
+        viewer.session.insert({
+            row: viewer.session.getLength(),
+            column: 0
+        }, event.data)
+    });
+
+    socket.addEventListener('close', (event) => {
+        console.log(status);
+        if (status !== 'success' &&
+            status !== 'error' &&
+            status !== 'cancelled') {
+            document.location.reload();
+        }
+    });
+
+</script>
+{% endblock %}

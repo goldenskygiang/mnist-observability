@@ -27,7 +27,12 @@ def start_experiment(self, exp_id: str):
 
     logger = logging.getLogger(exp_id)
     logger.setLevel(logging.INFO)
-    logger.addHandler(logging.FileHandler(log_path))
+
+    fh = logging.FileHandler(log_path)
+    fh.setFormatter(logging.Formatter(
+        "[%(asctime)s][%(name)s][%(levelname)s] %(message)s"
+    ))
+    logger.addHandler(fh)
 
     start_time = time.time()
 
@@ -58,8 +63,8 @@ def start_experiment(self, exp_id: str):
                 logger.info(f'Configuration: {key}')
 
                 model = init_linear_model(args.output_activation_func)
-                model, train_metrics_per_epoch = train_model(model, exp, lr, batch_sz, logger)
-                model, test_metrics = test_model(model, exp, lr, batch_sz, logger)
+                model, train_metrics_per_epoch = train_model(model, exp, lr, batch_sz)
+                model, test_metrics = test_model(model, exp, lr, batch_sz)
 
                 train_results[key] = [
                     {
