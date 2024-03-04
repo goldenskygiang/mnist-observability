@@ -35,7 +35,7 @@ services:
     container_name: worker
     image: worker
     build: .
-    command: celery -A app worker --loglevel=INFO &
+    command: celery -A app worker --loglevel=INFO -P solo &
     volumes:
       - data:/app
     depends_on:

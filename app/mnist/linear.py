@@ -43,6 +43,7 @@ def init_linear_model(activ_func: ActivationFunction):
     model = MNISTLinearModel(activ_func)
     return model
 
+# https://stackoverflow.com/questions/63645357/using-pytorch-with-celery
 def run_model_with_dataloader(
         model: MNISTLinearModel,
         optimizer: optim.Optimizer,
