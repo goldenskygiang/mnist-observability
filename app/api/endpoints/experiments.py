@@ -49,6 +49,12 @@ async def get_experiment_with_id(id: str):
     response_model_by_alias=False
 )
 async def create_new_experiment(exp: ExperimentDto = Body()):
+    runs = len(exp.hyperparam.learning_rates) * len(exp.hyperparam.batch_sizes)
+
+    if (runs < 1) or (runs > config.GRID_SEARCH_LIMIT):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, f"Total combinations of grid search must be <= {config.GRID_SEARCH_LIMIT}!")
+
     new_exp = await experiment_collection.insert_one(
         exp.model_dump(by_alias=True)
     )

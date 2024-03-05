@@ -12,6 +12,7 @@
         <thead>
             <tr>
                 <th>Name</th>
+                <th>Last updated</th>
                 <th>Status</th>
                 <th>Runtime</th>
                 <th>Accuracy</th>
@@ -50,14 +51,15 @@
             let name = r.name;
             let status = r.status;
             let runtime = r.elapsed_time;
+            let updated = new Date(r.updated_at + 'Z');
     
             let acc = 0, pre = 0, rec = 0, best_f1 = 0;
-            for (const key in r.test_result) {
-                if (r.test_result[key].f1_score > best_f1) {
-                    best_f1 = r.test_result[key].f1_score;
-                    acc = r.test_result[key].accuracy;
-                    pre = r.test_result[key].precision;
-                    rec = r.test_result[key].recall;
+            for (const key in r.test_results) {
+                if (r.test_results[key].f1_score > best_f1) {
+                    best_f1 = r.test_results[key].f1_score;
+                    acc = r.test_results[key].accuracy;
+                    pre = r.test_results[key].precision;
+                    rec = r.test_results[key].recall;
                 }
             }
     
@@ -66,6 +68,10 @@
             idLink.innerText = name;
             idLink.href = '/details/' + id;
             cell.push(idLink.outerHTML);
+
+            // datetime
+            console.log(r.updated_at);
+            cell.push(updated.toLocaleString());
 
             // status, runtime, accuracy
             let statusBlock = document.createElement('span');
@@ -101,8 +107,9 @@
 
         $('#resultTable').DataTable({
             data: display_data,
+            order: [[1, 'desc']],
             columnDefs: [
-                { type: "formatted-num", target: 2 }
+                { type: "formatted-num", target: 3 }
             ]
         });
     }

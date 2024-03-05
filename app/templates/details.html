@@ -11,8 +11,10 @@
         <h1>{{ name }} - experiment results <span id="exp-status-badge"></span></h1>
     </div>
     <div>
-        <b>Experiment ID:</b>
-        <p id="exp-id">{{ id }}</p>
+        <p><b>Experiment ID:</b> <span id="exp-id">{{ id }}</span></p>
+        <p><b>Optimizer:</b> {{ hyperparam.optimizer.split('.')[0] }}</p>
+        <p><b>Activation Function:</b> {{ hyperparam.output_activation_func.split('.')[0] }}</p>
+        <p><b>Elapsed time:</b> {{ "%.4f" % elapsed_time }} s</p>
         <p id="exp-status" hidden>{{ status }}</p>
     </div>
     <hr />
@@ -34,7 +36,7 @@
             <div id="metrics-viewer" class="accordion"></div>
         </div>
         <div class="tab-pane" id="logs-pane" role="tabpanel" aria-labelledby="logs-tab" tabindex="0">
-            <div id="log-viewer" style="height: 450px;"></div>
+            <div id="log-viewer" style="height: 500px;"></div>
         </div>
     </div>
 </div>
@@ -42,7 +44,9 @@
 
 {% block scripts %}
 <script src="/static/js/ace.js" type="text/javascript" charset="utf-8"></script>
+<script src="/static/js/chart.js" type="text/javascript" charset="utf-8"></script>
 <script>
+    var expId = document.getElementById('exp-id').innerText;
     var status = document.getElementById('exp-status').innerText;
     var statusBlock = document.getElementById('exp-status-badge');
     status = status.split('.')[1].toLowerCase();
@@ -68,25 +72,6 @@
 
     var metricsViewer = document.getElementById('metrics-viewer');
 
-    if (status !== 'success' &&
-        status !== 'error' &&
-        status !== 'cancelled') {
-        metricsViewer.innerText = "Metrics are not available yet!";
-
-        let logsTab = document.getElementById('logs-tab');
-        logsTab.className += ' active';
-        let logsPane = document.getElementById('logs-pane');
-        logsPane.className += ' active';
-    } else {
-        let chartsTab = document.getElementById('charts-tab');
-        chartsTab.className += ' active';
-        let chartsPane = document.getElementById('charts-pane');
-        chartsPane.className += ' active';
-
-        // TODO: handle plotting here
-        metricsViewer.innerText = "Metrics are now available!";
-    }
-
     var viewer = ace.edit('log-viewer');
     viewer.setTheme("ace/theme/terminal");
     viewer.session.setMode("ace/mode/plain_text");
@@ -99,7 +84,7 @@
 
     socket.addEventListener('open', (event) => {
         console.log(event);
-        socket.send(document.getElementById('exp-id').innerText);
+        socket.send(expId);
     });
 
     socket.addEventListener('message', (event) => {
@@ -116,6 +101,232 @@
             document.location.reload();
         }
     });
+
+    if (status !== 'success' &&
+        status !== 'error' &&
+        status !== 'cancelled') {
+        metricsViewer.innerText = "The experiment has not completed yet!";
+
+        let logsTab = document.getElementById('logs-tab');
+        logsTab.className += ' active';
+        let logsPane = document.getElementById('logs-pane');
+        logsPane.className += ' active';
+    } else {
+        let chartsTab = document.getElementById('charts-tab');
+        chartsTab.className += ' active';
+        let chartsPane = document.getElementById('charts-pane');
+        chartsPane.className += ' active';
+
+        fetch(`/api/experiments/${expId}`).then(resp => {
+            if (!resp.ok) {
+                alert('Error retrieving experiment results');
+                throw new Error('Error retrieving experiment results');
+            }
+            return resp.json();
+        }).then(data => {
+            let results = {};
+
+            let best_f1_key = '', best_f1 = 0;
+
+            for (let key in data.train_results) {
+                results[key] = {
+                    'train_results': data.train_results[key],
+                    'test_results': data.test_results[key]
+                }
+
+                if ((best_f1_key === '') ||
+                    (data.test_results[key]['f1_score'] > best_f1)) {
+                    best_f1 = data.test_results[key]['f1_score'];
+                    best_f1_key = key;
+                }
+            }
+
+            // testing summary accordion plot
+            let groups = [];
+            let sumMetrics = {
+                'accuracy': [], 'precision': [], 'recall': [], 'f1_score': []
+            };
+
+            for (let key in results) {
+                let grp = key;
+                if (key === best_f1_key) grp = "(Best F1) " + grp;
+                groups.push(grp);
+
+                for (let metric in sumMetrics)
+                    sumMetrics[metric].push(results[key]['test_results'][metric]);
+            }
+
+            let sumData = [
+                { label: 'Accuracy', data: sumMetrics['accuracy'] },
+                { label: 'Precision', data: sumMetrics['precision'] },
+                { label: 'Recall', data: sumMetrics['recall'] },
+                { label: 'F1-Score', data: sumMetrics['f1_score'] }
+            ]
+
+            let sumId = 'summary-accordion';
+            let sumAccordion = document.createElement('div');
+            sumAccordion.className = 'accordion-item';
+            let sumHeader = document.createElement('h2');
+            sumHeader.className = 'accordion-header';
+            let sumHeaderBtn = document.createElement('button');
+            sumHeaderBtn.className = 'accordion-button';
+            sumHeaderBtn.setAttribute('data-bs-toggle', 'collapse');
+            sumHeaderBtn.setAttribute('data-bs-target', `#${sumId}`);
+            sumHeaderBtn.setAttribute('data-bs-parent', `#${metricsViewer.id}`);
+            sumHeaderBtn.setAttribute('aria-controls', `${sumId}`);
+            sumHeaderBtn.innerText = 'TESTING SUMMARY';
+            sumHeaderBtn.style.fontWeight = 'bold';
+            sumHeaderBtn.style.fontStyle = 'italic';
+            sumHeader.innerHTML = sumHeaderBtn.outerHTML;
+            sumAccordion.appendChild(sumHeader);
+
+            let sumContent = document.createElement('div');
+            sumContent.id = sumId;
+            sumContent.className = 'accordion-collapse collapse show';
+
+            let sumBody = document.createElement('div');
+            sumBody.className = 'accordion-body';
+
+            console.log('group: ', groups);
+            console.log('sumdata: ', sumData);
+
+            let sumPlot = document.createElement('canvas');
+            new Chart(sumPlot, {
+                type: 'bar',
+                data: {
+                    labels: groups,
+                    datasets: sumData
+                },
+                options: {
+                    //indexAxis: 'x',
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Testing Performance across Grid-Search Configurations'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            sumBody.appendChild(sumPlot);
+            sumContent.appendChild(sumBody);
+            sumAccordion.appendChild(sumContent);
+            metricsViewer.append(sumAccordion);
+            
+            for (let key in results) {
+                let accordion = document.createElement('div');
+                accordion.className = 'accordion-item';
+
+                // add accordion header
+                let resId = key.replace(/ /g, '');
+                let header = document.createElement('h2');
+                header.className = 'accordion-header';
+                let headerBtn = document.createElement('button');
+                headerBtn.className = 'accordion-button collapsed';
+                headerBtn.setAttribute('data-bs-toggle', 'collapse');
+                headerBtn.setAttribute('data-bs-target', `#${resId}`);
+                headerBtn.setAttribute('aria-controls', `${resId}`);
+                headerBtn.innerText = key;
+                if (key === best_f1_key) {
+                    headerBtn.style.fontWeight = 'bold';
+                    headerBtn.innerText = "(Best F1) " + headerBtn.innerText;
+                }
+                header.innerHTML = headerBtn.outerHTML;
+                accordion.appendChild(header);
+
+                // add accordion content
+                let content = document.createElement('div');
+                content.id = resId;
+                content.className = 'accordion-collapse collapse';
+
+                let body = document.createElement('div');
+                body.className = 'accordion-body';
+
+                let row = document.createElement('div');
+                row.className = 'row';
+
+                // handle plotting here
+                let epoches = [];
+                for (let i = 1; i <= data.hyperparam.epochs; i++) epoches.push(i);
+
+                let losses = [], acc = [], pre = [], rec = [], f1 = [];
+                for (let res of results[key]['train_results']) {
+                    losses.push(res['loss']);
+                    acc.push(res['accuracy']);
+                    pre.push(res['precision']);
+                    rec.push(res['recall']);
+                    f1.push(res['f1_score']);
+                }
+
+                let col1 = document.createElement('div');
+                col1.className = 'col-6';
+                let lossPlot = document.createElement('canvas');
+                new Chart(lossPlot, {
+                    type: 'line',
+                    data: {
+                        labels: epoches,
+                        datasets: [{
+                            label: 'Loss value',
+                            data: losses,
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Training Loss per Epoch'
+                            },
+                            legend: {
+                                display: true,
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+                col1.appendChild(lossPlot);
+                row.appendChild(col1);
+
+                let col2 = document.createElement('div');
+                col2.className = 'col-6';
+                let perfPlot = document.createElement('canvas');
+                new Chart(perfPlot, {
+                    type: 'line',
+                    data: {
+                        labels: epoches,
+                        datasets: [
+                            { label: 'Accuracy', data: acc },
+                            { label: 'Precision', data: pre },
+                            { label: 'Recall', data: rec },
+                            { label: 'F1-Score', data: f1 }
+                        ]
+                    },
+                    options: {
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Training Performance per Epoch'
+                            },
+                            legend: {
+                                display: true,
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+                col2.appendChild(perfPlot);
+                row.appendChild(col2);
+
+                body.appendChild(row);
+                content.appendChild(body);
+                accordion.appendChild(content);
+
+                metricsViewer.appendChild(accordion);
+            }
+        }).catch(err => console.error('Fetch error: ', err));
+    }
 
 </script>
 {% endblock %}

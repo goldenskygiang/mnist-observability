@@ -14,10 +14,8 @@ import asyncio
 
 from app.models.experiment import ExperimentModel
 
-@celeryapp.task(bind=True)
+@celeryapp.task(bind=True, ignore_result=True)
 def start_experiment(self, exp_id: str):
-    loop = asyncio.get_event_loop()
-
     task_id = self.request.id
     exp_obj_id = ObjectId(exp_id)
 
@@ -37,6 +35,8 @@ def start_experiment(self, exp_id: str):
     start_time = time.time()
 
     try:
+        loop = asyncio.get_event_loop()
+
         exp = loop.run_until_complete(experiment_collection.find_one_and_update(
             { "_id": exp_obj_id },
             {
@@ -56,10 +56,15 @@ def start_experiment(self, exp_id: str):
         train_results = {}
         test_results = {}
 
-        for lr in args.learning_rate:
-            for batch_sz in args.batch_size:
-                key = f"lr={lr},batch_size={batch_sz}"
+        run_cnt = 0
+        total_runs = len(args.learning_rates) * len(args.batch_sizes)
 
+        logger.info(f'Experiment {exp_id} started')
+
+        for lr in args.learning_rates:
+            for batch_sz in args.batch_sizes:
+                run_cnt += 1
+                key = f"[{run_cnt:02d}/{total_runs:02d}] Learning Rate = {lr} | Batch size = {batch_sz}"
                 logger.info(f'Configuration: {key}')
 
                 model = init_linear_model(args.output_activation_func)
@@ -78,9 +83,11 @@ def start_experiment(self, exp_id: str):
 
         upd = {
             "train_results": train_results,
-            "test_result": test_results,
+            "test_results": test_results,
             "status": ExperimentStatus.SUCCESS
         }
+
+        logger.info(f'Experiment {exp_id} completed successfully')
 
         loop.run_until_complete(experiment_collection.find_one_and_update(
             { "_id": exp_obj_id },
@@ -90,6 +97,7 @@ def start_experiment(self, exp_id: str):
 
     except Exception as e:
         logger.exception(e)
+        logger.info(f'Experiment {exp_id} failed')
         
         loop.run_until_complete(experiment_collection.find_one_and_update(
             { "_id": exp_obj_id },
@@ -105,14 +113,17 @@ def start_experiment(self, exp_id: str):
         ))
         
     finally:
+        elapsed_time = time.time() - start_time
         loop.run_until_complete(experiment_collection.find_one_and_update(
             { "_id": exp_obj_id },
             {
                 "$set":
                 {
                     "updated_at": datetime.utcnow(),
-                    "elapsed_time": time.time() - start_time
+                    "elapsed_time": elapsed_time
                 }
             },
             return_document=ReturnDocument.AFTER
         ))
+
+        logger.info(f'Elapsed time: {elapsed_time} s')

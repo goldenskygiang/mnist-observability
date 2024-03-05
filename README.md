@@ -72,3 +72,7 @@ Experiment(Abstract):
 - hyperparams: Hyperparam
 - last_result: Metrics
 - result_per_epoch: Metrics[]
+
+## Known issues
+
+- Celery will not retry tasks if the supervisor is shut down.

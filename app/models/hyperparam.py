@@ -4,8 +4,8 @@ from typing import List
 
 class Hyperparam(BaseModel):
     epochs: int
-    learning_rate: List[float]
-    batch_size: List[int]
+    learning_rates: List[float]
+    batch_sizes: List[int]
     optimizer: Optimizer
     output_activation_func: ActivationFunction
 

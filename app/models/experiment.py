@@ -23,7 +23,7 @@ class ExperimentModel(ExperimentDto):
     status: ExperimentStatus = ExperimentStatus.CREATED
     log_dir: Optional[str] = None
     checkpoint_dir: Optional[str] = None
-    test_result: Optional[Dict[str, Metrics]] = None
+    test_results: Optional[Dict[str, Metrics]] = None
     train_results: Optional[Dict[str, List[Metrics]]] = None
 
     elapsed_time: float = 0
@@ -32,10 +32,6 @@ class ExperimentModel(ExperimentDto):
         populate_by_name=True,
         arbitrary_types_allowed=True
     )
-
-    def __setattr__(self, name, value):
-        super().__setattr__(name, value)
-        super().__setattr__('updated_at', datetime.utcnow())
 
 class ExperimentCollection(BaseModel):
     experiments: List[ExperimentModel]
