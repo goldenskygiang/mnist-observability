@@ -8,7 +8,7 @@
 <div class="container">
     <a href="/">Back to home</a>
     <div class="row">
-        <h1>{{ name }} - experiment results <span id="exp-status-badge"></span></h1>
+        <h1>{{ name }} <span id="exp-status-badge"></span></h1>
     </div>
     <div>
         <p><b>Experiment ID:</b> <span id="exp-id">{{ id }}</span></p>
@@ -22,11 +22,15 @@
     <ul class="nav nav-tabs" id="myTab" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts-pane"
-                type="button" role="tab" aria-controls="charts-pane" aria-selected="true">Charts</button>
+                type="button" role="tab" aria-controls="charts-pane" aria-selected="true">
+                <i class="bi bi-file-bar-graph-fill"></i> Charts
+            </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs-pane"
-                type="button" role="tab" aria-controls="logs-pane" aria-selected="false">Logs</button>
+                type="button" role="tab" aria-controls="logs-pane" aria-selected="false">
+                <i class="bi bi-terminal-fill"></i> Logs
+            </button>
         </li>
     </ul>
     <div class="tab-content" id="myTabContent">

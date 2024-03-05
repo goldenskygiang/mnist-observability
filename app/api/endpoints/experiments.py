@@ -22,8 +22,7 @@ router = APIRouter()
 )
 async def get_all_experiments():
     return ExperimentCollection(
-        experiments=await experiment_collection.find().sort(
-            "updated_at", pymongo.DESCENDING).to_list(1000))
+        experiments=await experiment_collection.find().to_list(1000))
 
 @router.get(
     '/{id}',

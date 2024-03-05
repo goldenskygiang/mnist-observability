@@ -16,8 +16,8 @@ class ExperimentDto(BaseModel):
 
 class ExperimentModel(ExperimentDto):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now()
     
     celery_task_id: Optional[str] = None
     status: ExperimentStatus = ExperimentStatus.CREATED

@@ -51,7 +51,7 @@ services:
       - MNIST_DATASET_DIR=${MNIST_DATASET_DIR}
       - CHECKPOINT_DIR=${CHECKPOINT_DIR}
       - LOG_DIR=${LOG_DIR}
-    command: celery -A app worker --loglevel=INFO -P gevent &
+    command: celery -A app worker --loglevel=INFO -P gevent
     volumes:
       - data:/app
     depends_on:
@@ -69,7 +69,7 @@ services:
       - MNIST_DATASET_DIR=${MNIST_DATASET_DIR}
       - CHECKPOINT_DIR=${CHECKPOINT_DIR}
       - LOG_DIR=${LOG_DIR}
-    command: celery -A app flower &
+    command: celery -A app flower
     volumes:
       - data:/app
     ports:

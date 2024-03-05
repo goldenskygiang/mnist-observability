@@ -7,5 +7,170 @@
 {% block content %}
 <div class="container">
     <h1>Create new experiment</h1>
+    <hr />
+    <form class="needs-validation" novalidate>
+        <h2>General</h2>
+        <div class="row mb-3">
+            <label for="expName" class="col-md-2 col-form-label">Experiment name</label>
+            <div class="col-md-5">
+                <input type="text" class="form-control" id="expName" placeholder="a good model" required />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="expSeed" class="col-md-2 col-form-label">Seed value</label>
+            <div class="col-md-5">
+                <input type="number" class="form-control" id="expSeed" placeholder="(optional)" />
+            </div>
+        </div>
+        <!-- <div class="row mb-3">
+            <label for="expSeed" class="col-md-2">Use GPU</label>
+            <div class="col-md-5">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="useGPU">
+                </div>
+            </div>
+        </div> -->
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Hyperparameters</h2>
+                <div class="row mb-3">
+                    <label for="expName" class="col-md-3 col-form-label">Number of epochs</label>
+                    <div class="col-md-5">
+                        <input type="number" class="form-control" id="argEpochs" required />
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="optimSel" class="col-md-3 col-form-label">Optimizer</label>
+                    <div class="col-md-5">
+                        <select class="form-select" id="optimSel" required>
+                            <option value="Adam">Adam</option>
+                            <option value="RMSprop">RMSprop</option>
+                            <option value="SGD">SGD</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="activFuncSel" class="col-md-3 col-form-label">Activation Function</label>
+                    <div class="col-md-5">
+                        <select class="form-select" id="activFuncSel" required>
+                            <option value="softmax">Softmax</option>
+                            <option value="tanh">Tanh</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h2>Grid search configurations</h2>
+                <div class="row mb-3">
+                    <label for="lrList" class="col-md-3 col-form-label">Learning rates</label>
+                    <div class="col-md-5">
+                        <ul id="lrList" class="px-0" data-add-btn="lrAddBtn">
+
+                        </ul>
+                        <button id="lrAddBtn" type="button" class="btn btn-secondary"
+                            onclick="addListInputCell(this, 'lrList')">
+                            <span class="bi bi-plus-lg"></span> Add more
+                        </button>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="bsList" class="col-md-3 col-form-label">Batch sizes</label>
+                    <div class="col-md-5">
+                        <ul id="bsList" class="px-0" data-add-btn="bsAddBtn">
+
+                        </ul>
+                        <button id="bsAddBtn" type="button" class="btn btn-secondary"
+                            onclick="addListInputCell(this, 'bsList')">
+                            <span class="bi bi-plus-lg"></span> Add more
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center">
+            <button type="submit" class="btn btn-lg btn-primary" onclick="validateAndSubmit()">
+                <i class="bi bi-send-fill"></i> Create & Run experiment
+            </button>
+        </div>
+    </form>
+
+    <template id="inputListCellTemplate">
+        <li class="row mb-3">
+            <div class="input-group">
+                <input id="nameText" type="number" class="form-control">
+                <button type="button" class="btn btn-danger">
+                    <span class="bi bi-x-lg"></span>
+                </button>
+            </div>
+        </li>
+    </template>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const CONFIG_LIMIT = 16;
+
+    function deleteListInputCell(event) {
+        let listItem = event.target.closest('li');
+        let ul = listItem.parentNode;
+
+        if (listItem && ul.children.length > 1) {
+            ul.removeChild(listItem);
+        }
+
+        if (ul.children.length == 1) {
+            let delBtn = ul.querySelector('.btn-danger');
+            if (delBtn) {
+                delBtn.removeEventListener('click', deleteListInputCell, false);
+                delBtn.hidden = true;
+            }
+        }
+        else if (ul.children.length < CONFIG_LIMIT) {
+            ul.querySelectorAll('.btn-danger').forEach(delBtn => {
+                delBtn.addEventListener('click', deleteListInputCell, false);
+                delBtn.hidden = false;
+            });
+        }
+
+        let addBtn = document.getElementById(ul.getAttribute('data-add-btn'));
+        addBtn.disabled = false;
+    }
+
+    function addListInputCell(elem, ulId) {
+        let ul = document.getElementById(ulId);
+
+        if (ul.children.length < CONFIG_LIMIT) {
+            ul.appendChild(createInputListCell());
+
+            ul.querySelectorAll('.btn-danger').forEach(delBtn => {
+                delBtn.addEventListener('click', deleteListInputCell, false);
+                delBtn.hidden = false;
+            });
+
+            if (ul.children.length == CONFIG_LIMIT) {
+                elem.disabled = true;
+            }
+        }
+    }
+
+    function createInputListCell() {
+        const inputListCellTemplate = document.getElementById('inputListCellTemplate');
+        const cell = document.importNode(inputListCellTemplate.content, true);
+        return cell;
+    }
+
+    function validateAndSubmit() {
+    }
+
+    let lrList = document.getElementById('lrList');
+    let lrCell = createInputListCell();
+    lrCell.querySelector('.btn-danger').hidden = true;
+    lrList.appendChild(lrCell);
+
+    let bsList = document.getElementById('bsList');
+    let bsCell = createInputListCell();
+    bsCell.querySelector('.btn-danger').hidden = true;
+    bsList.appendChild(bsCell);
+</script>
 {% endblock %}
