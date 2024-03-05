@@ -15,7 +15,5 @@ def get_app() -> FastAPI:
 
 app = get_app()
 
-init_dataset(config.MNIST_DATASET_DIR)
-
 if __name__ == 'main':
     uvicorn.run(app, host='0.0.0.0', port=8080)

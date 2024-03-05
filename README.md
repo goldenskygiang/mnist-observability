@@ -18,6 +18,26 @@ pip install -r requirements.txt
 
 Modify the `.env` file to fill in environment variables.
 
+### The Docker way
+
+Create a new file `docker.env` containing the necessary environment variables. The following one provides a decent starting point:
+
+```
+MONGODB_URL=mongodb://mongodb:27017/
+REDIS_URL=redis://default:redispw@redis:6379
+MNIST_DATASET_DIR=./data
+CHECKPOINT_DIR=./checkpoints
+LOG_DIR=./logs
+```
+
+Run `docker compose`
+
+```sh
+docker compose build
+source docker.env
+docker compose up -d
+```
+
 ## API
 
 GET /api/experiments

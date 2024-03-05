@@ -1,6 +1,7 @@
 **/__pycache__
 **/data
 **/logs
+**/venv
 **/.venv
 **/.classpath
 **/.dockerignore
