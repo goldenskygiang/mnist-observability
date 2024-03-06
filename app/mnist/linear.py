@@ -1,6 +1,8 @@
 from logging import *
 import logging
+import random
 import time
+import numpy as np
 
 import torch
 import torch.optim as optim
@@ -11,7 +13,7 @@ from torch.utils.data import DataLoader
 from app.models.enums import ActivationFunction, Optimizer
 from app.models.experiment import ExperimentModel, Hyperparam
 
-from app.mnist.dataset import get_data_loader, init_dataset
+from app.mnist.dataset import get_data_loader
 from app.models.metrics import Metrics
 
 NUM_CLASSES = 10
@@ -124,9 +126,6 @@ def train_model(
 
     args = experiment.hyperparam
 
-    if experiment.seed:
-        torch.manual_seed(experiment.seed)
-
     device = torch.device('cpu')
     if experiment.use_gpu and torch.cuda.is_available():
         device = torch.device('cuda')
@@ -137,10 +136,15 @@ def train_model(
     model.to(device)
     model.train()
 
+    rng = None
+    if experiment.seed:
+        rng = torch.manual_seed(experiment.seed)
+
     train_dataloader = get_data_loader(
         train=True,
         batch_size=batch_sz,
-        shuffle=experiment.seed is None)
+        shuffle=experiment.seed is None,
+        generator=rng)
     
     # TOOD: grid search hyperparams
     optimizer = None
@@ -171,10 +175,7 @@ def test_model(
     logger = logging.getLogger(str(experiment.id))
 
     args = experiment.hyperparam
-
-    if experiment.seed:
-        torch.manual_seed(experiment.seed)
-
+    
     device = torch.device('cpu')
     if experiment.use_gpu and torch.cuda.is_available():
         device = torch.device('cuda')
@@ -185,10 +186,15 @@ def test_model(
     model.to(device)
     model.eval()
 
+    rng = None
+    if experiment.seed:
+        rng = torch.manual_seed(experiment.seed)
+
     test_dataloader = get_data_loader(
         train=False,
         batch_size=batch_sz,
-        shuffle=experiment.seed is None)
+        shuffle=experiment.seed is None,
+        generator=rng)
     
     optimizer = None
     if args.optimizer == Optimizer.Adam:

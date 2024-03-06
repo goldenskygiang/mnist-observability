@@ -2,17 +2,21 @@ from datetime import datetime
 import logging
 import os
 import time
+
 from app import config
+from app.celery import celeryapp
 from app.mnist.linear import init_linear_model, test_model, train_model
 from app.models.enums import ExperimentStatus
-from app.models import experiment_collection
-from app.celery import celeryapp
+from app.models import db
+from app.models.experiment import ExperimentModel
 
+import torch
+import numpy as np
+import random
 from bson import ObjectId
 from pymongo import ReturnDocument
-import asyncio
 
-from app.models.experiment import ExperimentModel
+experiment_collection = db.get_collection(config.EXPERIMENT_COLLECTION_NAME)
 
 @celeryapp.task(bind=True, ignore_result=True)
 def start_experiment(self, exp_id: str):
@@ -35,17 +39,7 @@ def start_experiment(self, exp_id: str):
     start_time = time.time()
 
     try:
-        try:
-            logger.info('Obtaining event loop')
-            loop = asyncio.get_running_loop()
-        except Exception as e:
-            logger.exception(e)
-            logger.info('Obtaining new event loop')
-            
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        exp = loop.run_until_complete(experiment_collection.find_one_and_update(
+        exp = experiment_collection.find_one_and_update(
             { "_id": exp_obj_id },
             {
                 "$set":
@@ -56,7 +50,7 @@ def start_experiment(self, exp_id: str):
                 }
             },
             return_document=ReturnDocument.AFTER
-        ))
+        )
 
         exp = ExperimentModel.model_validate(exp)
         args = exp.hyperparam
@@ -68,6 +62,15 @@ def start_experiment(self, exp_id: str):
         total_runs = len(args.learning_rates) * len(args.batch_sizes)
 
         logger.info(f'Experiment {exp_id} started')
+
+        if exp.seed:
+            logger.info(f'Using seed value {exp.seed}')
+            torch.manual_seed(exp.seed)
+        
+        np.random.seed(exp.seed)
+        random.seed(exp.seed)
+
+        logger.info(exp.model_dump_json(indent=2))
 
         for lr in args.learning_rates:
             for batch_sz in args.batch_sizes:
@@ -96,42 +99,22 @@ def start_experiment(self, exp_id: str):
         }
 
         logger.info(f'Experiment {exp_id} completed successfully')
-
-        loop.run_until_complete(experiment_collection.find_one_and_update(
-            { "_id": exp_obj_id },
-            { "$set": upd },
-            return_document=ReturnDocument.AFTER
-        ))
-
     except Exception as e:
         logger.exception(e)
         logger.info(f'Experiment {exp_id} failed')
-        
-        loop.run_until_complete(experiment_collection.find_one_and_update(
-            { "_id": exp_obj_id },
-            {
-                "$set":
-                {
-                    "celery_task_id": task_id,
-                    "status": ExperimentStatus.ERROR,
-                    "log_dir": log_path
-                }
-            },
-            return_document=ReturnDocument.AFTER
-        ))
-        
+
+        upd = { "status": ExperimentStatus.ERROR }
     finally:
         elapsed_time = time.time() - start_time
-        loop.run_until_complete(experiment_collection.find_one_and_update(
+        logger.info(f'Elapsed time: {elapsed_time} s')
+
+        upd['updated_at'] = datetime.utcnow()
+        upd['elapsed_time'] = elapsed_time
+
+        experiment_collection.find_one_and_update(
             { "_id": exp_obj_id },
             {
-                "$set":
-                {
-                    "updated_at": datetime.utcnow(),
-                    "elapsed_time": elapsed_time
-                }
+                "$set": upd
             },
             return_document=ReturnDocument.AFTER
-        ))
-
-        logger.info(f'Elapsed time: {elapsed_time} s')
+        )

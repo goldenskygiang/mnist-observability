@@ -38,16 +38,17 @@ Create a new file `docker.env` containing the necessary environment variables. T
 
 ```
 MONGODB_URL=mongodb://mongodb:27017/
+DB_NAME=mnist-observability
 REDIS_URL=redis://default:redispw@redis:6379
 MNIST_DATASET_DIR=./data
 LOG_DIR=./logs
+FLOWER_UNAUTHENTICATED_API=true
 ```
 
 Run `docker compose` commands:
 
 ```sh
 docker compose build
-source docker.env
 docker compose up -d
 ```
 

@@ -5,13 +5,13 @@ from app import config
 from app.celery import celeryapp
 from app.models.enums import ExperimentStatus
 from app.services.taskman import tasks as taskman
-from app.models import experiment_collection
+from app.models import async_db
 from app.models.experiment import ExperimentDto, ExperimentModel, ExperimentCollection
 import logging
-from fastapi import APIRouter, Body, Depends, HTTPException, Response, WebSocket, WebSocketException, status
-from celery.result import AsyncResult
+from fastapi import APIRouter, Body, HTTPException, Response, WebSocket, WebSocketException, status
 
 router = APIRouter()
+experiment_collection = async_db.get_collection(config.EXPERIMENT_COLLECTION_NAME)
 
 @router.get(
     '/',
@@ -99,25 +99,22 @@ async def stream_logs(websocket: WebSocket):
     experiment = ExperimentModel.model_validate(experiment)
     
     if experiment.log_dir is not None:
-        try:
-            with open(experiment.log_dir, 'r') as f:
-                await websocket.send_text(f.read())
-                while True:
-                    content = f.read()
-                    if content:
-                        await websocket.send_text(content)
-                        experiment = ExperimentModel.model_validate(
-                            await experiment_collection.find_one(
-                                { "_id": ObjectId(id) }
-                            )
+        with open(experiment.log_dir, 'r') as f:
+            await websocket.send_text(f.read())
+            while True:
+                content = f.read()
+                if content:
+                    await websocket.send_text(content)
+                    experiment = ExperimentModel.model_validate(
+                        await experiment_collection.find_one(
+                            { "_id": ObjectId(id) }
                         )
-                    else:
-                        await asyncio.sleep(5)
+                    )
+                else:
+                    await asyncio.sleep(5)
 
-                    if experiment.status == ExperimentStatus.SUCCESS or \
-                    experiment.status == ExperimentStatus.ERROR:
-                        break
+                if experiment.status == ExperimentStatus.SUCCESS or \
+                experiment.status == ExperimentStatus.ERROR:
+                    break
                     
-                await websocket.close()
-        except Exception as e:
-            logging.exception(e)
+    await websocket.close()

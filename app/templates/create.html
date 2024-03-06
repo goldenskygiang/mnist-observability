@@ -231,9 +231,8 @@
             }
         });
 
-        if (Number.isInteger(jsonData['seed'])) {
-            jsonData['seed'] = parseInt(jsonData['seed']);
-        } else {
+        jsonData['seed'] = parseInt(jsonData['seed']);
+        if (!Number.isInteger(jsonData['seed'])) {
             jsonData['seed'] = null;
         }
 

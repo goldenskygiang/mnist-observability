@@ -12,6 +12,9 @@
     </div>
     <div>
         <p><b>Experiment ID:</b> <span id="exp-id">{{ id }}</span></p>
+        {% if seed is not none %}
+        <p><b>Seed value:</b> {{ seed }}</p>
+        {% endif %}
         <p><b>Optimizer:</b> {{ hyperparam.optimizer.split('.')[0] }}</p>
         <p><b>Activation Function:</b> {{ hyperparam.output_activation_func.split('.')[0] }}</p>
         <p><b>Elapsed time:</b> {{ "%.4f" % elapsed_time }} s</p>
@@ -29,7 +32,7 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs-pane"
                 type="button" role="tab" aria-controls="logs-pane" aria-selected="false">
-                <i class="bi bi-terminal-fill"></i> Logs
+                <i class="spinner-border spinner-border-sm"></i> Logs
             </button>
         </li>
     </ul>
@@ -105,20 +108,21 @@
             document.location.reload();
         }
     });
+    
+    let logsTab = document.getElementById('logs-tab');
+    let logsPane = document.getElementById('logs-pane');
+    let chartsTab = document.getElementById('charts-tab');
+    let chartsPane = document.getElementById('charts-pane');
 
-    if (status !== 'success' &&
-        status !== 'error' &&
-        status !== 'cancelled') {
-        metricsViewer.innerText = "The experiment has not completed yet!";
-
-        let logsTab = document.getElementById('logs-tab');
-        logsTab.className += ' active';
-        let logsPane = document.getElementById('logs-pane');
-        logsPane.className += ' active';
-    } else {
-        let chartsTab = document.getElementById('charts-tab');
+    if (status === 'error' || status === 'cancelled') {
+        metricsViewer.innerText = "An error occured while running the experiment.";
+        
+        logsTab.querySelector('i').className = 'bi bi-bug-fill';
         chartsTab.className += ' active';
-        let chartsPane = document.getElementById('charts-pane');
+        chartsPane.className += ' active';
+    } else if (status === 'success') {
+        logsTab.querySelector('i').className = 'bi bi-terminal-fill';
+        chartsTab.className += ' active';
         chartsPane.className += ' active';
 
         fetch(`/api/experiments/${expId}`).then(resp => {
@@ -330,6 +334,16 @@
                 metricsViewer.appendChild(accordion);
             }
         }).catch(err => console.error('Fetch error: ', err));
+    } else {
+        metricsViewer.innerText = "The experiment has not been completed yet!";
+
+        if (status === 'running')
+            logsTab.querySelector('i').className = 'spinner-border spinner-border-sm';
+        else
+            logsTab.querySelector('i').className = 'bi bi-terminal-fill';
+        
+        logsTab.className += ' active';
+        logsPane.className += ' active';
     }
 
 </script>

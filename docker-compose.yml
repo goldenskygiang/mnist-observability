@@ -1,18 +1,25 @@
 version: '3.4'
 
 volumes:
+  app:
   data:
+  dbconfig:
 
 services:
   mongodb:
     container_name: mongodb
     image: mongo:latest
+    volumes:
+      - data:/data/db
+      - dbconfig:/data/configdb
     ports:
-      - 27021:27021
+      - 27017:27017
 
   redis:
     container_name: redis
     image: redis:latest
+    volumes:
+      - data:/data
     ports:
       - 6379:6379
  
@@ -21,57 +28,41 @@ services:
     image: mnist-observability
     env_file:
       - path: ./docker.env
-    environment:
-      - MONGODB_URL=${MONGODB_URL}
-      - REDIS_URL=${REDIS_URL}
-      - MNIST_DATASET_DIR=${MNIST_DATASET_DIR}
-      - LOG_DIR=${LOG_DIR}
     build:
       context: .
       dockerfile: ./Dockerfile
     user: appuser
     volumes:
-      - data:/app
+      - app:/app
     ports:
       - 8000:8000
     depends_on:
       - redis
       - mongodb
-      - worker
 
   worker:
     container_name: worker
     image: mnist-observability
     env_file:
       - path: ./docker.env
-    environment:
-      - MONGODB_URL=${MONGODB_URL}
-      - REDIS_URL=${REDIS_URL}
-      - MNIST_DATASET_DIR=${MNIST_DATASET_DIR}
-      - LOG_DIR=${LOG_DIR}
-    command: celery -A app worker --loglevel=INFO -P gevent
+    command: celery -A app worker --loglevel=INFO -P gevent -E
     volumes:
-      - data:/app
+      - app:/app
     depends_on:
       - redis
       - mongodb
+      - mnist-observability
 
   flower:
     container_name: flower
     image: mnist-observability
     env_file:
       - path: ./docker.env
-    environment:
-      - MONGODB_URL=${MONGODB_URL}
-      - REDIS_URL=${REDIS_URL}
-      - MNIST_DATASET_DIR=${MNIST_DATASET_DIR}
-      - LOG_DIR=${LOG_DIR}
     command: celery -A app flower
     volumes:
-      - data:/app
+      - app:/app
     ports:
       - 5555:5555
     depends_on:
       - redis
       - mongodb
-      - worker
