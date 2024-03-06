@@ -10,17 +10,31 @@ A simple web app to manage MNIST experiments and view metrics.
 
 ## Getting started
 
+### Run locally
+
 ```sh
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
-
 Modify the `.env` file to fill in environment variables.
+
+Start the two Redis and MongoDB servers.
+
+Start the web server:
+
+```sh
+uvicorn app.main:app --reload
+```
+
+Start Celery worker:
+```sh
+celery -A app worker --loglevel=INFO -P [threads/solo/gevent]
+```
 
 ### The Docker way
 
-Create a new file `docker.env` containing the necessary environment variables. The following one provides a decent starting point:
+Create a new file `docker.env` containing the necessary environment variables. The following one should provide a decent starting point:
 
 ```
 MONGODB_URL=mongodb://mongodb:27017/
@@ -30,7 +44,7 @@ CHECKPOINT_DIR=./checkpoints
 LOG_DIR=./logs
 ```
 
-Run `docker compose`
+Run `docker compose` commands:
 
 ```sh
 docker compose build
@@ -53,46 +67,3 @@ POST /api/experiments/:id/stop
 POST /api/experiments/:id/clone
 
 DELETE /api/experiments/:id
-
-## Data model
-
-Abstract:
-- id
-- created_at
-- updated_at
-
-Hyperparam(Abstract):
-- epoches
-- learning_rate [GS]
-- dropout [GS]
-- batch_size
-- optimizer (Enum: Adam, SGD, RMSprop)
-- architecture
-  + hidden_layers
-  + activation_func
-- output_activation_func (Enum: softmax)
-- loss_func (MSE, MAE)
-
-Metrics(Abstract):
-- loss
-- accuracy
-- precision
-- recall
-- f1_score
-- runtime
-
-Experiment(Abstract):
-- name
-- celery_task_id
-- use_gpu
-- status: [DRAFT, RUNNING, SUCCESS, ERROR]
-- deleted: bool
-- log_dir
-- checkpoint_dir
-- hyperparams: Hyperparam
-- last_result: Metrics
-- result_per_epoch: Metrics[]
-
-## Known issues
-
-- Celery will not retry tasks if the supervisor is shut down.
