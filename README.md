@@ -40,7 +40,6 @@ Create a new file `docker.env` containing the necessary environment variables. T
 MONGODB_URL=mongodb://mongodb:27017/
 REDIS_URL=redis://default:redispw@redis:6379
 MNIST_DATASET_DIR=./data
-CHECKPOINT_DIR=./checkpoints
 LOG_DIR=./logs
 ```
 
