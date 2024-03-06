@@ -35,8 +35,15 @@ def start_experiment(self, exp_id: str):
     start_time = time.time()
 
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        try:
+            logger.info('Obtaining event loop')
+            loop = asyncio.get_running_loop()
+        except Exception as e:
+            logger.exception(e)
+            logger.info('Obtaining new event loop')
+            
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
         exp = loop.run_until_complete(experiment_collection.find_one_and_update(
             { "_id": exp_obj_id },

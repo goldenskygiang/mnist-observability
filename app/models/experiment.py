@@ -11,7 +11,7 @@ PyObjectId = Annotated[str, BeforeValidator(str)]
 class ExperimentDto(BaseModel):
     name: str
     seed: Optional[int] = None
-    use_gpu: bool = False
+    use_gpu: Optional[bool] = False
     hyperparam: Hyperparam
 
 class ExperimentModel(ExperimentDto):
@@ -22,7 +22,6 @@ class ExperimentModel(ExperimentDto):
     celery_task_id: Optional[str] = None
     status: ExperimentStatus = ExperimentStatus.CREATED
     log_dir: Optional[str] = None
-    checkpoint_dir: Optional[str] = None
     test_results: Optional[Dict[str, Metrics]] = None
     train_results: Optional[Dict[str, List[Metrics]]] = None
 

@@ -1,17 +1,21 @@
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 from fastapi import FastAPI
+import nest_asyncio
 
 from app.api.router import api_router
 from app.celery import celeryapp
 import app.config as config
 from app.mnist.dataset import init_dataset
 
+
 def get_app() -> FastAPI:
     app = FastAPI()
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
     app.include_router(api_router)
     return app
+
+nest_asyncio.apply()
 
 app = get_app()
 

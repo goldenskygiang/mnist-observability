@@ -8,25 +8,28 @@
 <div class="container">
     <h1>Create new experiment</h1>
     <hr />
-    <form class="needs-validation" novalidate>
+    <div id="alertPlaceholder"></div>
+    <form id="expForm" class="needs-validation" novalidate>
         <h2>General</h2>
         <div class="row mb-3">
             <label for="expName" class="col-md-2 col-form-label">Experiment name</label>
             <div class="col-md-5">
-                <input type="text" class="form-control" id="expName" placeholder="a good model" required />
+                <input type="text" name="name" class="form-control" id="expName" placeholder="a good model" required />
+                <div class="invalid-feedback">Please type a name</div>
             </div>
         </div>
         <div class="row mb-3">
             <label for="expSeed" class="col-md-2 col-form-label">Seed value</label>
             <div class="col-md-5">
-                <input type="number" class="form-control" id="expSeed" placeholder="(optional)" />
+                <input type="number" name="seed" class="form-control" id="expSeed" pattern="-?\d+" placeholder="(optional)" />
+                <div class="invalid-feedback">Seed must be an integer</div>
             </div>
         </div>
         <!-- <div class="row mb-3">
-            <label for="expSeed" class="col-md-2">Use GPU</label>
+            <label for="useGPU" class="col-md-2">Use GPU</label>
             <div class="col-md-5">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="useGPU">
+                    <input name="use_gpu" class="form-check-input" type="checkbox" id="useGPU">
                 </div>
             </div>
         </div> -->
@@ -36,13 +39,14 @@
                 <div class="row mb-3">
                     <label for="expName" class="col-md-3 col-form-label">Number of epochs</label>
                     <div class="col-md-5">
-                        <input type="number" class="form-control" id="argEpochs" required />
+                        <input name="hyperparam.epochs" type="number" class="form-control" id="argEpochs" min="1" required />
+                        <div class="invalid-feedback">Number of epochs must be a positive integer</div>
                     </div>
                 </div>
                 <div class="row mb-3">
                     <label for="optimSel" class="col-md-3 col-form-label">Optimizer</label>
                     <div class="col-md-5">
-                        <select class="form-select" id="optimSel" required>
+                        <select name="hyperparam.optimizer" class="form-select" id="optimSel" required>
                             <option value="Adam">Adam</option>
                             <option value="RMSprop">RMSprop</option>
                             <option value="SGD">SGD</option>
@@ -52,7 +56,7 @@
                 <div class="row mb-3">
                     <label for="activFuncSel" class="col-md-3 col-form-label">Activation Function</label>
                     <div class="col-md-5">
-                        <select class="form-select" id="activFuncSel" required>
+                        <select name="hyperparam.output_activation_func" class="form-select" id="activFuncSel" required>
                             <option value="softmax">Softmax</option>
                             <option value="tanh">Tanh</option>
                         </select>
@@ -65,10 +69,9 @@
                     <label for="lrList" class="col-md-3 col-form-label">Learning rates</label>
                     <div class="col-md-5">
                         <ul id="lrList" class="px-0" data-add-btn="lrAddBtn">
-
                         </ul>
-                        <button id="lrAddBtn" type="button" class="btn btn-secondary"
-                            onclick="addListInputCell(this, 'lrList')">
+                        <button id="lrAddBtn" type="button" class="btn btn-sm btn-secondary"
+                            onclick="createLrInputCell(this, 'lrList')">
                             <span class="bi bi-plus-lg"></span> Add more
                         </button>
                     </div>
@@ -77,10 +80,9 @@
                     <label for="bsList" class="col-md-3 col-form-label">Batch sizes</label>
                     <div class="col-md-5">
                         <ul id="bsList" class="px-0" data-add-btn="bsAddBtn">
-
                         </ul>
-                        <button id="bsAddBtn" type="button" class="btn btn-secondary"
-                            onclick="addListInputCell(this, 'bsList')">
+                        <button id="bsAddBtn" type="button" class="btn btn-sm btn-secondary"
+                            onclick="createBsInputCell(this, 'bsList')">
                             <span class="bi bi-plus-lg"></span> Add more
                         </button>
                     </div>
@@ -88,7 +90,7 @@
             </div>
         </div>
         <div class="text-center">
-            <button type="submit" class="btn btn-lg btn-primary" onclick="validateAndSubmit()">
+            <button type="submit" class="btn btn-lg btn-primary">
                 <i class="bi bi-send-fill"></i> Create & Run experiment
             </button>
         </div>
@@ -97,8 +99,9 @@
     <template id="inputListCellTemplate">
         <li class="row mb-3">
             <div class="input-group">
-                <input id="nameText" type="number" class="form-control">
-                <button type="button" class="btn btn-danger">
+                <input id="nameText" type="number" class="form-control rounded-right" required>
+                <div class="invalid-feedback order-1">Invalid value (if empty then remove it)</div>
+                <button type="button" class="btn btn-danger rounded-end">
                     <span class="bi bi-x-lg"></span>
                 </button>
             </div>
@@ -137,11 +140,13 @@
         addBtn.disabled = false;
     }
 
-    function addListInputCell(elem, ulId) {
+    function addListInputCell(
+        elem, ulId, minVal = null, validateInt = false,
+        validateMsg = 'Invalid value (if empty then remove it)') {
         let ul = document.getElementById(ulId);
 
         if (ul.children.length < CONFIG_LIMIT) {
-            ul.appendChild(createInputListCell());
+            ul.appendChild(createInputListCell(minVal, validateInt, validateMsg));
 
             ul.querySelectorAll('.btn-danger').forEach(delBtn => {
                 delBtn.addEventListener('click', deleteListInputCell, false);
@@ -154,23 +159,145 @@
         }
     }
 
-    function createInputListCell() {
+    function createInputListCell(
+        minValue = null, validateInt = false, validateMsg = null) {
         const inputListCellTemplate = document.getElementById('inputListCellTemplate');
         const cell = document.importNode(inputListCellTemplate.content, true);
+
+        if (minValue !== null) {
+            cell.querySelector('input').min = minValue;
+            if (validateInt && Number.isInteger(minValue)) cell.querySelector('input').step = 1;
+        }
+        else cell.querySelector('input').step = 'any';
+
+        if (validateMsg !== null) {
+            cell.querySelector('.invalid-feedback').innerText = validateMsg;
+        }
+
         return cell;
     }
 
-    function validateAndSubmit() {
+    function createLrInputCell(elem, ulId) {
+        addListInputCell(elem, ulId, null, false, 'Learning rate must be a float number');
+    }
+
+    function createBsInputCell(elem, ulId) {
+        addListInputCell(elem, ulId, 1, true, 'Batch size must be a positive integer');
+    }
+
+    function extractInputNumberList(ulId, validateInt = false) {
+        let ul = document.getElementById(ulId);
+
+        let inputs = [];
+        ul.querySelectorAll('input').forEach((value, key) => {
+            value = value.value;
+
+            if (validateInt && Number.isInteger(value)) value = parseInt(value);
+            else value = parseFloat(value);
+
+            inputs.push(value);
+        });
+
+        return inputs;
+    }
+
+    function validateFormAndSubmit(event) {
+        event.preventDefault();
+        
+        let form = event.target;
+        form.classList.add('was-validated');
+
+        if (!form.checkValidity()) {
+            event.stopPropagation();
+            return;
+        }
+        
+        let formData = new FormData(event.target);
+        let jsonData = {};
+
+        formData.forEach((value, key) => {
+            let keys = key.split('.');
+            let currentObj = jsonData;
+
+            for (let i = 0; i < keys.length; i++) {
+                let keyPart = keys[i];
+
+                if (i === keys.length - 1) {
+                    currentObj[keyPart] = value;
+                } else {
+                    currentObj[keyPart] = currentObj[keyPart] || {};
+                    currentObj = currentObj[keyPart];
+                }
+            }
+        });
+
+        if (Number.isInteger(jsonData['seed'])) {
+            jsonData['seed'] = parseInt(jsonData['seed']);
+        } else {
+            jsonData['seed'] = null;
+        }
+
+        jsonData['hyperparam']['epochs'] = parseInt(jsonData['hyperparam']['epochs']);
+        jsonData['hyperparam']['learning_rates'] = extractInputNumberList('lrList', false);
+        jsonData['hyperparam']['batch_sizes'] = extractInputNumberList('bsList', true);
+
+        let cntLr = jsonData['hyperparam']['learning_rates'].length;
+        let cntBs = jsonData['hyperparam']['batch_sizes'].length;
+        let numConfigs = cntLr * cntBs;
+
+        if (numConfigs > CONFIG_LIMIT || numConfigs < 1) {
+            let message = ['<b>Invalid number of Grid-Search Configurations</b>: ',
+            `system min 1 - max ${CONFIG_LIMIT}, `,
+            `got ${cntLr} (Learning rates) * ${cntBs} (Batch sizes) = ${numConfigs}!`].join('');
+
+            const alertPlaceholder = document.getElementById('alertPlaceholder');
+
+            const alert = document.createElement('div');
+            alert.innerHTML = [
+                `<div class="alert alert-danger alert-dismissible" role="alert">`,
+                `   <div>${message}</div>`,
+                '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+                '</div>'
+            ].join('');
+
+            alertPlaceholder.append(alert);
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+
+            event.stopPropagation();
+            return;
+        }
+
+        console.log(jsonData);
+
+        fetch('/api/experiments/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(jsonData)
+        }).then(
+            resp => resp.json()
+        ).then(data => {
+            let expId = data['id'];
+            console.log(expId);
+            window.location = `/details/${expId}`;
+        }).catch(err => {
+            console.log('fetch error: ', err);
+            alert(err);
+        });
     }
 
     let lrList = document.getElementById('lrList');
-    let lrCell = createInputListCell();
+    let lrCell = createInputListCell(null, false, 'Learning rate must be a float number');
     lrCell.querySelector('.btn-danger').hidden = true;
     lrList.appendChild(lrCell);
 
     let bsList = document.getElementById('bsList');
-    let bsCell = createInputListCell();
+    let bsCell = createInputListCell(1, true, 'Batch size must be a positive integer');
     bsCell.querySelector('.btn-danger').hidden = true;
     bsList.appendChild(bsCell);
+
+    let form = document.getElementById('expForm');
+    form.addEventListener('submit', validateFormAndSubmit, false);
 </script>
 {% endblock %}
